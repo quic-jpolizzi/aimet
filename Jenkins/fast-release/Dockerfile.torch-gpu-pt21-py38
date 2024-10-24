@@ -143,6 +143,7 @@ RUN python3 -m pip --no-cache-dir install \
         cylp \
         cython \
         dataclasses \
+        deepspeed==0.15.2 \
         Deprecated \
         docutils==0.16 \
         graphviz \
