@@ -234,11 +234,10 @@ def set_matmul_second_input_producer_to_8bit_symmetric(sim: 'QuantizationSimMode
         return connected_graph._module_to_op_dict[original_module]
 
     def get_closest_producer(op: Op):
-        if quant_modules.get(op.dotted_name.startswith(f'{model_name}.')):
+        if op.dotted_name.startswith(f'{model_name}.'):
             quant_module = quant_modules.get(op.dotted_name[len(f'{model_name}.'):])
         else:
-            quant_module = quant_modules.get(op.dotted_name)
-        #quant_module = quant_modules.get(op.dotted_name.removeprefix(f'{model_name}.'), None)
+            quant_module = None
         if quant_module:
             if quant_module.output_quantizers[0]:
                 return quant_module
