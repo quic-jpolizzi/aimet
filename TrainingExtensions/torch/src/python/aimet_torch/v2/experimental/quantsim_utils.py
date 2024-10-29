@@ -237,7 +237,7 @@ def set_matmul_second_input_producer_to_8bit_symmetric(sim: 'QuantizationSimMode
         if op.dotted_name.startswith(f'{model_name}.'):
             quant_module = quant_modules.get(op.dotted_name[len(f'{model_name}.'):])
         else:
-            quant_module = None
+            quant_module = quant_modules.get(op.dotted_name)
         if quant_module:
             if quant_module.output_quantizers[0]:
                 return quant_module
