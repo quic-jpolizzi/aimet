@@ -14,7 +14,7 @@ jobs:
       - name: Install Tools
         run: |
           sudo apt update -qq
-          sudo apt install --no-install-recommends -y git curl g++ ca-certificates
+          sudo apt install --no-install-recommends -y curl ca-certificates
           curl -sSL 'https://pki.qualcomm.com/{qc_root_g2_cert.crt,ssl_v3_cert.crt,ssl_v4_cert.crt}' > qualcomm.crt
           sudo cp qualcomm.crt /usr/local/share/ca-certificates/qualcomm.crt
           sudo update-ca-certificates
@@ -23,11 +23,7 @@ jobs:
           fetch-depth: 2
       - name: Check for Dockerfile Update
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q Jenkins/fast-release/Dockerfile.torch-gpu; then
-            echo "docker-updated=true" >> $GITHUB_ENV
-          else
-            echo "docker-updated=false" >> $GITHUB_ENV
-          fi
+          echo "docker-updated="$(if [ -n "$(git diff --name-only HEAD^ HEAD -- Jenkins/fast-release/Dockerfile.torch-gpu)" ]; then echo true; else echo false; fi) >> $GITHUB_ENV
       - uses: ./.github/actions/docker-build-image
         if: env.docker-updated == 'true'
         with:
@@ -85,16 +81,13 @@ jobs:
           unset IFS
       - name: Make the Pypi Wheel
         run: |
-          mkdir -p build/staging/universal && cd build
-          cmake .. -DENABLE_CUDA=ON -DENABLE_TORCH=ON -DENABLE_TENSORFLOW=OFF -DENABLE_ONNX=OFF -DPIP_INDEX=${{ vars.PYPI_INDEX }} -DSW_VERSION=${{ env.NIGHTLY_VERSION }} -DCMAKE_INSTALL_PREFIX="./staging/universal"
-          make -j4 && make install
-          make packageaimet
-          find . -name *.whl
-          echo "WHL_PATH=$(pwd)/$(find . -name *.whl -printf '%P\n')" >> $GITHUB_ENV
+          mkdir -p build/staging/universal
+          cmake -S . -B ./build -DENABLE_CUDA=ON -DENABLE_TORCH=ON -DENABLE_TENSORFLOW=OFF -DENABLE_ONNX=OFF -DPIP_INDEX=${{ vars.PYPI_INDEX }} -DSW_VERSION=${{ env.NIGHTLY_VERSION }} -DCMAKE_INSTALL_PREFIX="build/staging/universal" 
+          cmake --build ./build --parallel 4 --target all --target install --target packageaimet
       - uses: actions/upload-artifact@v3
         with:
           name: aimet-torch-${{ env.NIGHTLY_VERSION }}
-          path: ${{ env.WHL_PATH }}
+          path: build/**/*.whl
           if-no-files-found: error
           retention-days: 1d
 
@@ -125,7 +118,7 @@ jobs:
           apt-get update
           apt-get install python3 python3-pip -y
           python3 -m pip install --upgrade pip
-          python3 -m pip install aimet_torch-*.whl
+          python3 -m pip install packaging/dist/aimet_torch-*.whl
           python3 -m pip install bs4 deepspeed onnxruntime peft pytest spconv transformers torch==2.2.2 torchvision==0.17.2
           python3 -m pip install pytorch-ignite --no-dependencies
       - name: Run Unit Tests
@@ -158,8 +151,8 @@ jobs:
         run: |
          apt-get update
          apt-get install python3 python3-pip -y
-         python3 -m pip install aimet_torch-*.whl
-         python3 -m pip install bs4 wget pytest torch==2.2.2 torchvision==0.17.2 transformers==4.27.4 bs4 deepspeed==0.15.2 peft safetensors
+         python3 -m pip install packaging/dist/aimet_torch-*.whl
+         python3 -m pip install bs4 deepspeed==0.15.2 peft pytest safetensors torch==2.2.2 torchvision==0.17.2 transformers==4.27.4 wget
          python3 -m pip install pytorch-ignite --no-dependencies
       - name: Verify Dependency Data
         run: python3 NightlyTests/torch/dependencies.py NightlyTests/torch/resnet18_eval_scores.csv True
