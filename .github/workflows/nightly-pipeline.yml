@@ -1,13 +1,12 @@
-name: Fast Release Nightly and PR CI/CD Pipeline
+name: Fast Release Nightly CI/CD Pipeline
 
 on:
-  pull_request:
-    branches: [ develop, release-* ]
   schedule:
     - cron: '0 0 * * *'
 
 jobs:
   fast-release-docker-build:
+    if: github.server_url != 'https://github.com'
     name: Docker build for torch-gpu fast release
     runs-on: ubuntu-latest
     steps:
@@ -15,8 +14,7 @@ jobs:
         run: |
           sudo apt update -qq
           sudo apt install --no-install-recommends -y curl ca-certificates
-          curl -sSL 'https://pki.qualcomm.com/{qc_root_g2_cert.crt,ssl_v3_cert.crt,ssl_v4_cert.crt}' > qualcomm.crt
-          sudo cp qualcomm.crt /usr/local/share/ca-certificates/qualcomm.crt
+          sudo cp /tmp/certs/certificate-package.crt /usr/local/share/ca-certificates/certificate-package.crt
           sudo update-ca-certificates
       - uses: actions/checkout@v4
         with:
@@ -39,6 +37,7 @@ jobs:
             BUILDKIT_INLINE_CACHE=1
 
   build-pypi-whl:
+    if: github.server_url != 'https://github.com'
     name: Build AIMET pypi wheel
     runs-on: k8s-gpu
     needs: [fast-release-docker-build]
@@ -92,6 +91,7 @@ jobs:
           retention-days: 1d
 
   pypi-unit-tests:
+    if: github.server_url != 'https://github.com'
     name: AIMET Pypi Unit Test
     runs-on: k8s-gpu
     needs: [build-pypi-whl]
@@ -125,6 +125,7 @@ jobs:
         run: pytest TrainingExtensions/torch/test/python/
 
   pypi-acceptance-tests:
+    if: github.server_url != 'https://github.com'
     name: AIMET Pypi Acceptance Tests
     runs-on: k8s-gpu
     needs: [build-pypi-whl]
